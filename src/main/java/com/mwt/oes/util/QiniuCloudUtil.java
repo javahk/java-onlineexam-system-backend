@@ -13,11 +13,11 @@ import com.qiniu.util.Auth;
 public class QiniuCloudUtil {
 
     // 设置需要操作的账号的AK和SK
-    private static final String ACCESS_KEY = "veckoKb-xqTeNo1YuKWq4wZf2303KLlg_jNDOoLr";
-    private static final String SECRET_KEY = "lk_1rBf1LMvZgOqEw1ufCFO-FqbYD2k-9alx86Pd";
+    private static final String ACCESS_KEY = "psWU6gYM-y5bPRrFBU7_xG5q42rF4ege4jeC05q5";
+    private static final String SECRET_KEY = "ZVnCvaml8HxbFVFWU7VvHXhXfpyyHmH3wq0XG1DV";
 
     // 要上传的空间
-    private static final String bucketname = "onlineexam_system";
+    private static final String bucketname = "studyjava2";
 
     // 密钥
     private static final Auth auth = Auth.create(ACCESS_KEY, SECRET_KEY);
@@ -25,7 +25,7 @@ public class QiniuCloudUtil {
     //base64方式上传
     public static String put64image(byte[] data, String key){
         //图片的外链地址
-        StringBuffer imgUrl  = new StringBuffer("http://qiniu.maweitao.top/");
+        StringBuffer imgUrl  = new StringBuffer("http://q3fm7ycwb.bkt.clouddn.com/");
 
         //构造一个带指定Zone对象的配置类
         Configuration cfg = new Configuration(Zone.zone0());
