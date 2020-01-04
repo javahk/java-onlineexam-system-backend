@@ -1,36 +1,37 @@
 package com.mwt.oes.service.impl;
 
+import java.util.*;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
 import com.mwt.oes.dao.*;
 import com.mwt.oes.domain.*;
 import com.mwt.oes.service.StudentHomeService;
 import com.mwt.oes.service.TeacherPaperService;
 import com.mwt.oes.util.FindContentWithImage;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Service;
-
-import java.util.*;
 
 @Service
 public class TeacherPaperServiceImpl implements TeacherPaperService {
 
     @Autowired
-    ProgramingLanguageMapper programingLanguageMapper;
+    BankFillQueMapper bankFillQueMapper;
+    @Autowired
+    BankJudgeQueMapper bankJudgeQueMapper;
+    @Autowired
+    BankMultipleChoiceQueMapper bankMultipleChoiceQueMapper;
+    @Autowired
+    BankSingleChoiceQueMapper bankSingleChoiceQueMapper;
     @Autowired
     PaperMapper paperMapper;
+    @Autowired
+    PaperQueMapper paperQueMapper;
+    @Autowired
+    ProgramingLanguageMapper programingLanguageMapper;
     @Autowired
     StudentHomeService studentHomeService;
     @Autowired
     StudentPaperScoreMapper studentPaperScoreMapper;
-    @Autowired
-    PaperQueMapper paperQueMapper;
-    @Autowired
-    BankSingleChoiceQueMapper bankSingleChoiceQueMapper;
-    @Autowired
-    BankMultipleChoiceQueMapper bankMultipleChoiceQueMapper;
-    @Autowired
-    BankJudgeQueMapper bankJudgeQueMapper;
-    @Autowired
-    BankFillQueMapper bankFillQueMapper;
 
     @Override
     public List<Map<String, Object>> getPapersList() {
@@ -59,10 +60,9 @@ public class TeacherPaperServiceImpl implements TeacherPaperService {
             map.put("fillScore", paper.getFillScore());
 
             Map<String, Integer> queNum = studentHomeService.getPaperQueNumByPaperId(paper.getPaperId());
-            int totalScore = queNum.get("singleNum")*paper.getSingleScore()
-                    + queNum.get("multipleNum")*paper.getMultipleScore()
-                    + queNum.get("judgeNum")*paper.getJudgeScore()
-                    + queNum.get("fillNum")*paper.getFillScore();
+            int totalScore = queNum.get("singleNum") * paper.getSingleScore()
+                    + queNum.get("multipleNum") * paper.getMultipleScore()
+                    + queNum.get("judgeNum") * paper.getJudgeScore() + queNum.get("fillNum") * paper.getFillScore();
             map.put("totalScore", totalScore);
             map.put("singleNum", queNum.get("singleNum"));
             map.put("multipleNum", queNum.get("multipleNum"));
@@ -82,11 +82,12 @@ public class TeacherPaperServiceImpl implements TeacherPaperService {
         List<Map<String, Object>> resultList = new ArrayList<>();
         ProgramingLanguageExample programingLanguageExample = new ProgramingLanguageExample();
         programingLanguageExample.setOrderByClause("lang_id asc");
-        List<ProgramingLanguage> programingLanguageList = programingLanguageMapper.selectByExample(programingLanguageExample);
+        List<ProgramingLanguage> programingLanguageList = programingLanguageMapper
+                .selectByExample(programingLanguageExample);
         for (ProgramingLanguage programingLanguage : programingLanguageList) {
             Map<String, Object> map = new HashMap<>();
-            map.put("label",programingLanguage.getLangName());
-            map.put("key",programingLanguage.getLangId());
+            map.put("label", programingLanguage.getLangName());
+            map.put("key", programingLanguage.getLangId());
             resultList.add(map);
         }
         return resultList;
@@ -97,13 +98,13 @@ public class TeacherPaperServiceImpl implements TeacherPaperService {
         List<Map<String, Object>> resultList = new ArrayList<>();
         PaperExample paperExample = new PaperExample();
         PaperExample.Criteria criteria = paperExample.createCriteria();
-        if(!paperName.equals("undefined")) {
+        if (!paperName.equals("undefined")) {
             criteria.andPaperNameLike("%" + paperName + "%");
         }
-        if(langId != 0){
+        if (langId != 0) {
             criteria.andLangIdEqualTo(langId);
         }
-        if(paperType != 0){
+        if (paperType != 0) {
             criteria.andPaperTypeEqualTo(paperType);
         }
         paperExample.setOrderByClause("paper_id asc");
@@ -129,10 +130,9 @@ public class TeacherPaperServiceImpl implements TeacherPaperService {
             map.put("fillScore", paper.getFillScore());
 
             Map<String, Integer> queNum = studentHomeService.getPaperQueNumByPaperId(paper.getPaperId());
-            int totalScore = queNum.get("singleNum")*paper.getSingleScore()
-                    + queNum.get("multipleNum")*paper.getMultipleScore()
-                    + queNum.get("judgeNum")*paper.getJudgeScore()
-                    + queNum.get("fillNum")*paper.getFillScore();
+            int totalScore = queNum.get("singleNum") * paper.getSingleScore()
+                    + queNum.get("multipleNum") * paper.getMultipleScore()
+                    + queNum.get("judgeNum") * paper.getJudgeScore() + queNum.get("fillNum") * paper.getFillScore();
             map.put("totalScore", totalScore);
             map.put("singleNum", queNum.get("singleNum"));
             map.put("multipleNum", queNum.get("multipleNum"));
@@ -158,15 +158,87 @@ public class TeacherPaperServiceImpl implements TeacherPaperService {
 
     @Override
     public int deletePaper(Integer paperId) {
-        //  删除paper_que表中数据
+        // 删除paper_que表中数据
         PaperQueExample paperQueExample = new PaperQueExample();
         PaperQueExample.Criteria criteria = paperQueExample.createCriteria();
         criteria.andPaperIdEqualTo(paperId);
+        // 更新comple_flag标记
+        List<PaperQue> paperQues = paperQueMapper.selectByExample(paperQueExample);
+        for (PaperQue paperQue : paperQues) {
+            Integer fillId = paperQue.getFillId();
+            Integer judgeId = paperQue.getJudgeId();
+            Integer multipleId = paperQue.getMultipleId();
+            Integer singleId = paperQue.getSingleId();
+
+            updateFillCompliseFlag(fillId);
+            updateSingleCompliseFlag(singleId);
+            updateJudgeCompliseFlag(judgeId);
+            updateMultipleCompliseFlag(multipleId);
+
+        }
         int deletePaperQueResult = paperQueMapper.deleteByExample(paperQueExample);
-        //  删除paper表中数据
+        // 删除paper表中数据
         int deletePaperResult = paperMapper.deleteByPrimaryKey(paperId);
         return deletePaperResult;
     }
+
+    private void updateSingleCompliseFlag(Integer singleId){
+        PaperQueExample paperQueExample1 = new PaperQueExample();
+        PaperQueExample.Criteria criteria1 = paperQueExample1.createCriteria();
+        criteria1.andSingleIdEqualTo(singleId);
+        List<PaperQue> paperQues1 = paperQueMapper.selectByExample(paperQueExample1);
+        if(paperQues1 != null && paperQues1.size() == 1){
+            BankSingleChoiceQue bankSingleChoiceQue = new BankSingleChoiceQue();
+            bankSingleChoiceQue.setSingleId(singleId);
+            // 更新compose_flag字段
+            bankSingleChoiceQue.setComposeFlag("0");
+            bankSingleChoiceQueMapper.updateByPrimaryKeySelective(bankSingleChoiceQue);
+        }
+    }
+
+    private void updateFillCompliseFlag(Integer fillId){
+        PaperQueExample paperQueExample1 = new PaperQueExample();
+        PaperQueExample.Criteria criteria1 = paperQueExample1.createCriteria();
+        criteria1.andFillIdEqualTo(fillId);
+        List<PaperQue> paperQues1 = paperQueMapper.selectByExample(paperQueExample1);
+        if(paperQues1 != null && paperQues1.size() == 1){
+            BankFillQue bankFillQue = new BankFillQue();
+            bankFillQue.setFillId(fillId);
+            // 更新compose_flag字段
+            bankFillQue.setComposeFlag("0");
+            bankFillQueMapper.updateByPrimaryKeySelective(bankFillQue);
+        }
+    }
+
+    private void updateJudgeCompliseFlag(Integer judgeId){
+        PaperQueExample paperQueExample1 = new PaperQueExample();
+        PaperQueExample.Criteria criteria1 = paperQueExample1.createCriteria();
+        criteria1.andJudgeIdEqualTo(judgeId);
+        List<PaperQue> paperQues1 = paperQueMapper.selectByExample(paperQueExample1);
+        if(paperQues1 != null && paperQues1.size() == 1){
+            BankJudgeQue bankJudgeQue = new BankJudgeQue();
+            bankJudgeQue.setJudgeId(judgeId);
+            // 更新compose_flag字段
+            bankJudgeQue.setComposeFlag("0");
+            bankJudgeQueMapper.updateByPrimaryKeySelective(bankJudgeQue);
+        }
+    }
+
+    private void updateMultipleCompliseFlag(Integer multipleId){
+        PaperQueExample paperQueExample1 = new PaperQueExample();
+        PaperQueExample.Criteria criteria1 = paperQueExample1.createCriteria();
+        criteria1.andMultipleIdEqualTo(multipleId);
+        List<PaperQue> paperQues1 = paperQueMapper.selectByExample(paperQueExample1);
+        if(paperQues1 != null && paperQues1.size() == 1){
+            BankMultipleChoiceQue bankMultipleChoiceQue = new BankMultipleChoiceQue();
+            bankMultipleChoiceQue.setMultipleId(multipleId);
+            // 更新compose_flag字段
+            bankMultipleChoiceQue.setComposeFlag("0");
+            bankMultipleChoiceQueMapper.updateByPrimaryKeySelective(bankMultipleChoiceQue);
+        }
+    }
+
+
 
     @Override
     public Map<String, Object> getPaperQueDetailByPaperId(Integer paperId, Integer totalNum) {
@@ -182,123 +254,126 @@ public class TeacherPaperServiceImpl implements TeacherPaperService {
         for (BankSingleChoiceQue bankSingleChoiceQue : singleChoiceQueList) {
             int singleIndex = singleChoiceQueList.indexOf(bankSingleChoiceQue);
             Map<String, Object> singleMap = new HashMap<>();
-            //问题id加上第一级题目类型数量
-            singleMap.put("id",singleIndex + 5);
+            // 问题id加上第一级题目类型数量
+            singleMap.put("id", singleIndex + 5);
 
-            //获取单选题题目内容
-            Map<String, String> singleContentMap = FindContentWithImage.findContentWithImage(bankSingleChoiceQue.getSingleContent());
-            singleMap.put("label",(singleIndex + 1) + "、" + singleContentMap.get("content"));
+            // 获取单选题题目内容
+            Map<String, String> singleContentMap = FindContentWithImage
+                    .findContentWithImage(bankSingleChoiceQue.getSingleContent());
+            singleMap.put("label", (singleIndex + 1) + "、" + singleContentMap.get("content"));
 
-            //获取单选题答案内容和正确答案
+            // 获取单选题答案内容和正确答案
             List<Map<String, Object>> singleAnswersList = new ArrayList<>();
             Map<String, Object> singleChoiceA = new HashMap<>();
-            singleChoiceA.put("id",singleIndex*8 + totalNum + 5);
-            singleChoiceA.put("label",bankSingleChoiceQue.getChoiceA());
+            singleChoiceA.put("id", singleIndex * 8 + totalNum + 5);
+            singleChoiceA.put("label", bankSingleChoiceQue.getChoiceA());
             singleAnswersList.add(singleChoiceA);
             Map<String, Object> singleChoiceB = new HashMap<>();
-            singleChoiceB.put("id",singleIndex*8 + 1 + totalNum + 5);
-            singleChoiceB.put("label",bankSingleChoiceQue.getChoiceB());
+            singleChoiceB.put("id", singleIndex * 8 + 1 + totalNum + 5);
+            singleChoiceB.put("label", bankSingleChoiceQue.getChoiceB());
             singleAnswersList.add(singleChoiceB);
             if (bankSingleChoiceQue.getChoiceC() != null) {
                 Map<String, Object> singleChoiceC = new HashMap<>();
-                singleChoiceC.put("id",singleIndex*8 + 2 + totalNum + 5);
-                singleChoiceC.put("label",bankSingleChoiceQue.getChoiceC());
+                singleChoiceC.put("id", singleIndex * 8 + 2 + totalNum + 5);
+                singleChoiceC.put("label", bankSingleChoiceQue.getChoiceC());
                 singleAnswersList.add(singleChoiceC);
             }
             if (bankSingleChoiceQue.getChoiceD() != null) {
                 Map<String, Object> singleChoiceD = new HashMap<>();
-                singleChoiceD.put("id",singleIndex*8 + 3 + totalNum + 5);
-                singleChoiceD.put("label",bankSingleChoiceQue.getChoiceD());
+                singleChoiceD.put("id", singleIndex * 8 + 3 + totalNum + 5);
+                singleChoiceD.put("label", bankSingleChoiceQue.getChoiceD());
                 singleAnswersList.add(singleChoiceD);
             }
             if (bankSingleChoiceQue.getChoiceE() != null) {
                 Map<String, Object> singleChoiceE = new HashMap<>();
-                singleChoiceE.put("id",singleIndex*8 + 4 + totalNum + 5);
-                singleChoiceE.put("label",bankSingleChoiceQue.getChoiceE());
+                singleChoiceE.put("id", singleIndex * 8 + 4 + totalNum + 5);
+                singleChoiceE.put("label", bankSingleChoiceQue.getChoiceE());
                 singleAnswersList.add(singleChoiceE);
             }
             if (bankSingleChoiceQue.getChoiceF() != null) {
                 Map<String, Object> singleChoiceF = new HashMap<>();
-                singleChoiceF.put("id",singleIndex*8 + 5 + totalNum + 5);
-                singleChoiceF.put("label",bankSingleChoiceQue.getChoiceF());
+                singleChoiceF.put("id", singleIndex * 8 + 5 + totalNum + 5);
+                singleChoiceF.put("label", bankSingleChoiceQue.getChoiceF());
                 singleAnswersList.add(singleChoiceF);
             }
             if (bankSingleChoiceQue.getChoiceG() != null) {
                 Map<String, Object> singleChoiceG = new HashMap<>();
-                singleChoiceG.put("id",singleIndex*8 + 6 + totalNum + 5);
-                singleChoiceG.put("label",bankSingleChoiceQue.getChoiceG());
+                singleChoiceG.put("id", singleIndex * 8 + 6 + totalNum + 5);
+                singleChoiceG.put("label", bankSingleChoiceQue.getChoiceG());
                 singleAnswersList.add(singleChoiceG);
             }
             Map<String, Object> singleAnswer = new HashMap<>();
-            singleAnswer.put("id",singleIndex*8 + 7 + totalNum + 5);
-            singleAnswer.put("label","正确答案：" + bankSingleChoiceQue.getSingleAnswer());
+            singleAnswer.put("id", singleIndex * 8 + 7 + totalNum + 5);
+            singleAnswer.put("label", "正确答案：" + bankSingleChoiceQue.getSingleAnswer());
             singleAnswersList.add(singleAnswer);
 
-            singleMap.put("children",singleAnswersList);
+            singleMap.put("children", singleAnswersList);
             singleData.add(singleMap);
         }
 
         int singleNum = singleChoiceQueList.size();
 
         // 获取多选题问题列表
-        List<BankMultipleChoiceQue> multipleChoiceQueList = bankMultipleChoiceQueMapper.getMultipleQueListByPaperId(paperId);
+        List<BankMultipleChoiceQue> multipleChoiceQueList = bankMultipleChoiceQueMapper
+                .getMultipleQueListByPaperId(paperId);
         for (BankMultipleChoiceQue bankMultipleChoiceQue : multipleChoiceQueList) {
             int multipleIndex = multipleChoiceQueList.indexOf(bankMultipleChoiceQue);
             Map<String, Object> multipleMap = new HashMap<>();
-            //问题id加上第一级题目类型数量加上单选题数量
-            multipleMap.put("id",multipleIndex + 5 + singleNum);
+            // 问题id加上第一级题目类型数量加上单选题数量
+            multipleMap.put("id", multipleIndex + 5 + singleNum);
 
-            //获取多选题题目内容
-            Map<String, String> multipleContentMap = FindContentWithImage.findContentWithImage(bankMultipleChoiceQue.getMultipleContent());
-            multipleMap.put("label",(multipleIndex + 1 + singleNum) + "、" + multipleContentMap.get("content"));
+            // 获取多选题题目内容
+            Map<String, String> multipleContentMap = FindContentWithImage
+                    .findContentWithImage(bankMultipleChoiceQue.getMultipleContent());
+            multipleMap.put("label", (multipleIndex + 1 + singleNum) + "、" + multipleContentMap.get("content"));
 
-            //获取多选题答案内容和正确答案
+            // 获取多选题答案内容和正确答案
             List<Map<String, Object>> multipleAnswersList = new ArrayList<>();
             Map<String, Object> multipleChoiceA = new HashMap<>();
-            multipleChoiceA.put("id",multipleIndex*8 + totalNum + 5 + singleNum*8);
-            multipleChoiceA.put("label",bankMultipleChoiceQue.getChoiceA());
+            multipleChoiceA.put("id", multipleIndex * 8 + totalNum + 5 + singleNum * 8);
+            multipleChoiceA.put("label", bankMultipleChoiceQue.getChoiceA());
             multipleAnswersList.add(multipleChoiceA);
             Map<String, Object> multipleChoiceB = new HashMap<>();
-            multipleChoiceB.put("id",multipleIndex*8 + 1 + totalNum + 5 + singleNum*8);
-            multipleChoiceB.put("label",bankMultipleChoiceQue.getChoiceB());
+            multipleChoiceB.put("id", multipleIndex * 8 + 1 + totalNum + 5 + singleNum * 8);
+            multipleChoiceB.put("label", bankMultipleChoiceQue.getChoiceB());
             multipleAnswersList.add(multipleChoiceB);
-            if (bankMultipleChoiceQue.getChoiceC() != null){
+            if (bankMultipleChoiceQue.getChoiceC() != null) {
                 Map<String, Object> multipleChoiceC = new HashMap<>();
-                multipleChoiceC.put("id",multipleIndex*8 + 2 + totalNum + 5 + singleNum*8);
-                multipleChoiceC.put("label",bankMultipleChoiceQue.getChoiceC());
+                multipleChoiceC.put("id", multipleIndex * 8 + 2 + totalNum + 5 + singleNum * 8);
+                multipleChoiceC.put("label", bankMultipleChoiceQue.getChoiceC());
                 multipleAnswersList.add(multipleChoiceC);
             }
-            if (bankMultipleChoiceQue.getChoiceD() != null){
+            if (bankMultipleChoiceQue.getChoiceD() != null) {
                 Map<String, Object> multipleChoiceD = new HashMap<>();
-                multipleChoiceD.put("id",multipleIndex*8 + 3 + totalNum + 5 + singleNum*8);
-                multipleChoiceD.put("label",bankMultipleChoiceQue.getChoiceD());
+                multipleChoiceD.put("id", multipleIndex * 8 + 3 + totalNum + 5 + singleNum * 8);
+                multipleChoiceD.put("label", bankMultipleChoiceQue.getChoiceD());
                 multipleAnswersList.add(multipleChoiceD);
             }
-            if (bankMultipleChoiceQue.getChoiceE() != null){
+            if (bankMultipleChoiceQue.getChoiceE() != null) {
                 Map<String, Object> multipleChoiceE = new HashMap<>();
-                multipleChoiceE.put("id",multipleIndex*8 + 4 + totalNum + 5 + singleNum*8);
-                multipleChoiceE.put("label",bankMultipleChoiceQue.getChoiceE());
+                multipleChoiceE.put("id", multipleIndex * 8 + 4 + totalNum + 5 + singleNum * 8);
+                multipleChoiceE.put("label", bankMultipleChoiceQue.getChoiceE());
                 multipleAnswersList.add(multipleChoiceE);
             }
-            if (bankMultipleChoiceQue.getChoiceF() != null){
+            if (bankMultipleChoiceQue.getChoiceF() != null) {
                 Map<String, Object> multipleChoiceF = new HashMap<>();
-                multipleChoiceF.put("id",multipleIndex*8 + 5 + totalNum + 5 + singleNum*8);
-                multipleChoiceF.put("label",bankMultipleChoiceQue.getChoiceF());
+                multipleChoiceF.put("id", multipleIndex * 8 + 5 + totalNum + 5 + singleNum * 8);
+                multipleChoiceF.put("label", bankMultipleChoiceQue.getChoiceF());
                 multipleAnswersList.add(multipleChoiceF);
             }
-            if (bankMultipleChoiceQue.getChoiceG() != null){
+            if (bankMultipleChoiceQue.getChoiceG() != null) {
                 Map<String, Object> multipleChoiceG = new HashMap<>();
-                multipleChoiceG.put("id",multipleIndex*8 + 6 + totalNum + 5 + singleNum*8);
-                multipleChoiceG.put("label",bankMultipleChoiceQue.getChoiceG());
+                multipleChoiceG.put("id", multipleIndex * 8 + 6 + totalNum + 5 + singleNum * 8);
+                multipleChoiceG.put("label", bankMultipleChoiceQue.getChoiceG());
                 multipleAnswersList.add(multipleChoiceG);
             }
 
             Map<String, Object> multipleAnswer = new HashMap<>();
-            multipleAnswer.put("id",multipleIndex*8 + 7 + totalNum + 5 + singleNum*8);
-            multipleAnswer.put("label","正确答案：" + bankMultipleChoiceQue.getMultipleAnswer());
+            multipleAnswer.put("id", multipleIndex * 8 + 7 + totalNum + 5 + singleNum * 8);
+            multipleAnswer.put("label", "正确答案：" + bankMultipleChoiceQue.getMultipleAnswer());
             multipleAnswersList.add(multipleAnswer);
 
-            multipleMap.put("children",multipleAnswersList);
+            multipleMap.put("children", multipleAnswersList);
             multipleData.add(multipleMap);
         }
 
@@ -306,22 +381,22 @@ public class TeacherPaperServiceImpl implements TeacherPaperService {
 
         // 获取判断题问题列表
         List<BankJudgeQue> judgeQueList = bankJudgeQueMapper.getJudgeQueListByPaperId(paperId);
-        for (BankJudgeQue bankJudgeQue : judgeQueList){
+        for (BankJudgeQue bankJudgeQue : judgeQueList) {
             int judgeIndex = judgeQueList.indexOf(bankJudgeQue);
             Map<String, Object> judgeMap = new HashMap<>();
-            judgeMap.put("id",judgeIndex + 5 + singleNum + multipleNum);
+            judgeMap.put("id", judgeIndex + 5 + singleNum + multipleNum);
 
-            //获取判断题题目内容
-            judgeMap.put("label",(judgeIndex + 1 + singleNum + multipleNum) + "、" + bankJudgeQue.getJudgeContent());
+            // 获取判断题题目内容
+            judgeMap.put("label", (judgeIndex + 1 + singleNum + multipleNum) + "、" + bankJudgeQue.getJudgeContent());
 
-            //获取判断题正确答案
+            // 获取判断题正确答案
             List<Map<String, Object>> judgeAnswersList = new ArrayList<>();
             Map<String, Object> judgeAnswer = new HashMap<>();
-            judgeAnswer.put("id",judgeIndex*1 + totalNum + 5 + singleNum*8 + multipleNum*8);
-            judgeAnswer.put("label","正确答案：" + bankJudgeQue.getJudgeAnswer());
+            judgeAnswer.put("id", judgeIndex * 1 + totalNum + 5 + singleNum * 8 + multipleNum * 8);
+            judgeAnswer.put("label", "正确答案：" + bankJudgeQue.getJudgeAnswer());
             judgeAnswersList.add(judgeAnswer);
 
-            judgeMap.put("children",judgeAnswersList);
+            judgeMap.put("children", judgeAnswersList);
             judgeData.add(judgeMap);
         }
 
@@ -329,29 +404,30 @@ public class TeacherPaperServiceImpl implements TeacherPaperService {
 
         // 获取填空题问题列表
         List<BankFillQue> fillQueList = bankFillQueMapper.getFillQueListByPaperId(paperId);
-        for (BankFillQue bankFillQue : fillQueList){
+        for (BankFillQue bankFillQue : fillQueList) {
             int fillIndex = fillQueList.indexOf(bankFillQue);
             Map<String, Object> fillMap = new HashMap<>();
-            fillMap.put("id",fillIndex + 5 + singleNum + multipleNum + judgeNum);
+            fillMap.put("id", fillIndex + 5 + singleNum + multipleNum + judgeNum);
 
-            //获取填空题题目内容
-            fillMap.put("label",(fillIndex + 1 + singleNum + multipleNum + judgeNum) + "、" + bankFillQue.getFillContent());
+            // 获取填空题题目内容
+            fillMap.put("label",
+                    (fillIndex + 1 + singleNum + multipleNum + judgeNum) + "、" + bankFillQue.getFillContent());
 
-            //获取填空题正确答案
+            // 获取填空题正确答案
             List<Map<String, Object>> fillAnswersList = new ArrayList<>();
             Map<String, Object> fillAnswer = new HashMap<>();
-            fillAnswer.put("id",fillIndex*1 + totalNum + 5 + singleNum*8 + multipleNum*8 + judgeNum*1);
-            fillAnswer.put("label","正确答案：" + bankFillQue.getFillAnswer());
+            fillAnswer.put("id", fillIndex * 1 + totalNum + 5 + singleNum * 8 + multipleNum * 8 + judgeNum * 1);
+            fillAnswer.put("label", "正确答案：" + bankFillQue.getFillAnswer());
             fillAnswersList.add(fillAnswer);
 
-            fillMap.put("children",fillAnswersList);
+            fillMap.put("children", fillAnswersList);
             fillData.add(fillMap);
         }
 
-        map.put("singleData",singleData);
-        map.put("multipleData",multipleData);
-        map.put("judgeData",judgeData);
-        map.put("fillData",fillData);
+        map.put("singleData", singleData);
+        map.put("multipleData", multipleData);
+        map.put("judgeData", judgeData);
+        map.put("fillData", fillData);
         return map;
     }
 
@@ -385,12 +461,13 @@ public class TeacherPaperServiceImpl implements TeacherPaperService {
         int paperId = paperMapper.selectMaxPaperId() + 1;
         paper.setPaperId(paperId);
 
-        //  插入试卷信息到paper表
+        // 插入试卷信息到paper表
         int result = paperMapper.insertSelective(paper);
 
-        //  插入试卷问题信息到paper_que表
-        //  单选题
-        List<BankSingleChoiceQue> bankSingleChoiceQueList = bankSingleChoiceQueMapper.getRandomSingleByCountAndLangId(langId, singleNum);
+        // 插入试卷问题信息到paper_que表
+        // 单选题
+        List<BankSingleChoiceQue> bankSingleChoiceQueList = bankSingleChoiceQueMapper
+                .getRandomSingleByCountAndLangId(langId, singleNum);
         for (BankSingleChoiceQue bankSingleChoiceQue : bankSingleChoiceQueList) {
             int singleId = bankSingleChoiceQue.getSingleId();
             PaperQue paperQue = new PaperQue();
@@ -398,13 +475,14 @@ public class TeacherPaperServiceImpl implements TeacherPaperService {
             paperQue.setSingleId(singleId);
             paperQue.setPaperId(paperId);
             paperQueMapper.insertSelective(paperQue);
-            //更新compose_flag字段
+            // 更新compose_flag字段
             bankSingleChoiceQue.setComposeFlag("1");
             bankSingleChoiceQueMapper.updateByPrimaryKeySelective(bankSingleChoiceQue);
         }
 
-        //  多选题
-        List<BankMultipleChoiceQue> bankMultipleChoiceQueList = bankMultipleChoiceQueMapper.getRandomMultipleByCountAndLangId(langId, multipleNum);
+        // 多选题
+        List<BankMultipleChoiceQue> bankMultipleChoiceQueList = bankMultipleChoiceQueMapper
+                .getRandomMultipleByCountAndLangId(langId, multipleNum);
         for (BankMultipleChoiceQue bankMultipleChoiceQue : bankMultipleChoiceQueList) {
             int multipleId = bankMultipleChoiceQue.getMultipleId();
             PaperQue paperQue = new PaperQue();
@@ -412,12 +490,12 @@ public class TeacherPaperServiceImpl implements TeacherPaperService {
             paperQue.setMultipleId(multipleId);
             paperQue.setPaperId(paperId);
             paperQueMapper.insertSelective(paperQue);
-            //更新compose_flag字段
+            // 更新compose_flag字段
             bankMultipleChoiceQue.setComposeFlag("1");
             bankMultipleChoiceQueMapper.updateByPrimaryKeySelective(bankMultipleChoiceQue);
         }
 
-        //  判断题
+        // 判断题
         List<BankJudgeQue> bankJudgeQueList = bankJudgeQueMapper.getRandomJudgeByCountAndLangId(langId, judgeNum);
         for (BankJudgeQue bankJudgeQue : bankJudgeQueList) {
             int judgeId = bankJudgeQue.getJudgeId();
@@ -426,12 +504,12 @@ public class TeacherPaperServiceImpl implements TeacherPaperService {
             paperQue.setJudgeId(judgeId);
             paperQue.setPaperId(paperId);
             paperQueMapper.insertSelective(paperQue);
-            //更新compose_flag字段
+            // 更新compose_flag字段
             bankJudgeQue.setComposeFlag("1");
             bankJudgeQueMapper.updateByPrimaryKeySelective(bankJudgeQue);
         }
 
-        //  填空题
+        // 填空题
         List<BankFillQue> bankFillQueList = bankFillQueMapper.getRandomFillByCountAndLangId(langId, fillNum);
         for (BankFillQue bankFillQue : bankFillQueList) {
             int fillId = bankFillQue.getFillId();
@@ -440,7 +518,7 @@ public class TeacherPaperServiceImpl implements TeacherPaperService {
             paperQue.setFillId(fillId);
             paperQue.setPaperId(paperId);
             paperQueMapper.insertSelective(paperQue);
-            //更新compose_flag字段
+            // 更新compose_flag字段
             bankFillQue.setComposeFlag("1");
             bankFillQueMapper.updateByPrimaryKeySelective(bankFillQue);
         }
@@ -460,18 +538,21 @@ public class TeacherPaperServiceImpl implements TeacherPaperService {
         BankSingleChoiceQueExample bankSingleChoiceQueExample = new BankSingleChoiceQueExample();
         BankSingleChoiceQueExample.Criteria criteriaSingle = bankSingleChoiceQueExample.createCriteria();
         criteriaSingle.andLangIdEqualTo(langId);
-        List<BankSingleChoiceQue> bankSingleChoiceQueList = bankSingleChoiceQueMapper.selectByExample(bankSingleChoiceQueExample);
+        List<BankSingleChoiceQue> bankSingleChoiceQueList = bankSingleChoiceQueMapper
+                .selectByExample(bankSingleChoiceQueExample);
         for (BankSingleChoiceQue bankSingleChoiceQue : bankSingleChoiceQueList) {
             int singleId = bankSingleChoiceQue.getSingleId();
             Map<String, Object> singleMap = new HashMap<>();
             // 在每个singleId前加上1连接
-            int id = (int) (Math.pow(10,String.valueOf(singleId).length()) + singleId);
-            singleMap.put("id",id);
-            //获取单选题题目内容
-            Map<String, String> singleContentMap = FindContentWithImage.findContentWithImage(bankSingleChoiceQue.getSingleContent());
+            int id = (int) (Math.pow(10, String.valueOf(singleId).length()) + singleId);
+            singleMap.put("id", id);
+            // 获取单选题题目内容
+            Map<String, String> singleContentMap = FindContentWithImage
+                    .findContentWithImage(bankSingleChoiceQue.getSingleContent());
             String composeFlag = bankSingleChoiceQue.getComposeFlag();
             String composeStr = composeFlag.equals("1") ? "（已组过）" : "（未组过）";
-            singleMap.put("label",composeStr + (bankSingleChoiceQueList.indexOf(bankSingleChoiceQue) + 1) + "、" + singleContentMap.get("content"));
+            singleMap.put("label", composeStr + (bankSingleChoiceQueList.indexOf(bankSingleChoiceQue) + 1) + "、"
+                    + singleContentMap.get("content"));
 
             singleData.add(singleMap);
         }
@@ -479,18 +560,21 @@ public class TeacherPaperServiceImpl implements TeacherPaperService {
         BankMultipleChoiceQueExample bankMultipleChoiceQueExample = new BankMultipleChoiceQueExample();
         BankMultipleChoiceQueExample.Criteria criteriaMultiple = bankMultipleChoiceQueExample.createCriteria();
         criteriaMultiple.andLangIdEqualTo(langId);
-        List<BankMultipleChoiceQue> bankMultipleChoiceQueList = bankMultipleChoiceQueMapper.selectByExample(bankMultipleChoiceQueExample);
+        List<BankMultipleChoiceQue> bankMultipleChoiceQueList = bankMultipleChoiceQueMapper
+                .selectByExample(bankMultipleChoiceQueExample);
         for (BankMultipleChoiceQue bankMultipleChoiceQue : bankMultipleChoiceQueList) {
             int multipleId = bankMultipleChoiceQue.getMultipleId();
             Map<String, Object> multipleMap = new HashMap<>();
             // 在每个multipleId前加上2连接
-            int id = (int) (Math.pow(10,String.valueOf(multipleId).length())*2 + multipleId);
-            multipleMap.put("id",id);
-            //获取多选题题目内容
-            Map<String, String> multipleContentMap = FindContentWithImage.findContentWithImage(bankMultipleChoiceQue.getMultipleContent());
+            int id = (int) (Math.pow(10, String.valueOf(multipleId).length()) * 2 + multipleId);
+            multipleMap.put("id", id);
+            // 获取多选题题目内容
+            Map<String, String> multipleContentMap = FindContentWithImage
+                    .findContentWithImage(bankMultipleChoiceQue.getMultipleContent());
             String composeFlag = bankMultipleChoiceQue.getComposeFlag();
             String composeStr = composeFlag.equals("1") ? "（已组过）" : "（未组过）";
-            multipleMap.put("label",composeStr + (bankMultipleChoiceQueList.indexOf(bankMultipleChoiceQue) + 1) + "、" + multipleContentMap.get("content"));
+            multipleMap.put("label", composeStr + (bankMultipleChoiceQueList.indexOf(bankMultipleChoiceQue) + 1) + "、"
+                    + multipleContentMap.get("content"));
 
             multipleData.add(multipleMap);
         }
@@ -503,13 +587,14 @@ public class TeacherPaperServiceImpl implements TeacherPaperService {
             int judgeId = bankJudgeQue.getJudgeId();
             Map<String, Object> judgeMap = new HashMap<>();
             // 在每个judgeId前加上3连接
-            int id = (int) (Math.pow(10,String.valueOf(judgeId).length())*3 + judgeId);
-            judgeMap.put("id",id);
-//            System.out.println(judgeId + "---" + id);
-            //获取判断题题目内容
+            int id = (int) (Math.pow(10, String.valueOf(judgeId).length()) * 3 + judgeId);
+            judgeMap.put("id", id);
+            // System.out.println(judgeId + "---" + id);
+            // 获取判断题题目内容
             String composeFlag = bankJudgeQue.getComposeFlag();
             String composeStr = composeFlag.equals("1") ? "（已组过）" : "（未组过）";
-            judgeMap.put("label",composeStr + (bankJudgeQueList.indexOf(bankJudgeQue) + 1) + "、" + bankJudgeQue.getJudgeContent());
+            judgeMap.put("label",
+                    composeStr + (bankJudgeQueList.indexOf(bankJudgeQue) + 1) + "、" + bankJudgeQue.getJudgeContent());
 
             judgeData.add(judgeMap);
         }
@@ -522,20 +607,21 @@ public class TeacherPaperServiceImpl implements TeacherPaperService {
             int fillId = bankFillQue.getFillId();
             Map<String, Object> fillMap = new HashMap<>();
             // 在每个fillId前加上4连接
-            int id = (int) (Math.pow(10,String.valueOf(fillId).length())*4 + fillId);
-            fillMap.put("id",id);
-            //获取填空题题目内容
+            int id = (int) (Math.pow(10, String.valueOf(fillId).length()) * 4 + fillId);
+            fillMap.put("id", id);
+            // 获取填空题题目内容
             String composeFlag = bankFillQue.getComposeFlag();
             String composeStr = composeFlag.equals("1") ? "（已组过）" : "（未组过）";
-            fillMap.put("label",composeStr + (bankFillQueList.indexOf(bankFillQue) + 1) + "、" + bankFillQue.getFillContent());
+            fillMap.put("label",
+                    composeStr + (bankFillQueList.indexOf(bankFillQue) + 1) + "、" + bankFillQue.getFillContent());
 
             fillData.add(fillMap);
         }
 
-        map.put("singleData",singleData);
-        map.put("multipleData",multipleData);
-        map.put("judgeData",judgeData);
-        map.put("fillData",fillData);
+        map.put("singleData", singleData);
+        map.put("multipleData", multipleData);
+        map.put("judgeData", judgeData);
+        map.put("fillData", fillData);
         return map;
     }
 
@@ -569,56 +655,56 @@ public class TeacherPaperServiceImpl implements TeacherPaperService {
         int paperId = paperMapper.selectMaxPaperId() + 1;
         paper.setPaperId(paperId);
 
-        //  插入试卷信息到paper表
+        // 插入试卷信息到paper表
         int result = paperMapper.insertSelective(paper);
 
-        //单选题
+        // 单选题
         for (Integer singleId : singleNum) {
             PaperQue paperQue = new PaperQue();
             paperQue.setQueType(1);
             paperQue.setSingleId(singleId);
             paperQue.setPaperId(paperId);
             paperQueMapper.insertSelective(paperQue);
-            //更新compose_flag字段
+            // 更新compose_flag字段
             BankSingleChoiceQue bankSingleChoiceQue = new BankSingleChoiceQue();
             bankSingleChoiceQue.setSingleId(singleId);
             bankSingleChoiceQue.setComposeFlag("1");
             bankSingleChoiceQueMapper.updateByPrimaryKeySelective(bankSingleChoiceQue);
         }
-        //多选题
+        // 多选题
         for (Integer multipleId : multipleNum) {
             PaperQue paperQue = new PaperQue();
             paperQue.setQueType(2);
             paperQue.setMultipleId(multipleId);
             paperQue.setPaperId(paperId);
             paperQueMapper.insertSelective(paperQue);
-            //更新compose_flag字段
+            // 更新compose_flag字段
             BankMultipleChoiceQue bankMultipleChoiceQue = new BankMultipleChoiceQue();
             bankMultipleChoiceQue.setMultipleId(multipleId);
             bankMultipleChoiceQue.setComposeFlag("1");
             bankMultipleChoiceQueMapper.updateByPrimaryKeySelective(bankMultipleChoiceQue);
         }
-        //判断题
+        // 判断题
         for (Integer judgeId : judgeNum) {
             PaperQue paperQue = new PaperQue();
             paperQue.setQueType(3);
             paperQue.setJudgeId(judgeId);
             paperQue.setPaperId(paperId);
             paperQueMapper.insertSelective(paperQue);
-            //更新compose_flag字段
+            // 更新compose_flag字段
             BankJudgeQue bankJudgeQue = new BankJudgeQue();
             bankJudgeQue.setJudgeId(judgeId);
             bankJudgeQue.setComposeFlag("1");
             bankJudgeQueMapper.updateByPrimaryKeySelective(bankJudgeQue);
         }
-        //填空题
+        // 填空题
         for (Integer fillId : fillNum) {
             PaperQue paperQue = new PaperQue();
             paperQue.setQueType(4);
             paperQue.setFillId(fillId);
             paperQue.setPaperId(paperId);
             paperQueMapper.insertSelective(paperQue);
-            //更新compose_flag字段
+            // 更新compose_flag字段
             BankFillQue bankFillQue = new BankFillQue();
             bankFillQue.setFillId(fillId);
             bankFillQue.setComposeFlag("1");
