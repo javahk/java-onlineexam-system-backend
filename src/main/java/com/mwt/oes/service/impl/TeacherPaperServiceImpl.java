@@ -1,5 +1,6 @@
 package com.mwt.oes.service.impl;
 
+import java.nio.charset.Charset;
 import java.util.*;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -183,6 +184,9 @@ public class TeacherPaperServiceImpl implements TeacherPaperService {
     }
 
     private void updateSingleCompliseFlag(Integer singleId){
+        if(singleId == null || singleId == 0){
+            return;
+        }
         PaperQueExample paperQueExample1 = new PaperQueExample();
         PaperQueExample.Criteria criteria1 = paperQueExample1.createCriteria();
         criteria1.andSingleIdEqualTo(singleId);
@@ -197,6 +201,9 @@ public class TeacherPaperServiceImpl implements TeacherPaperService {
     }
 
     private void updateFillCompliseFlag(Integer fillId){
+        if(fillId == null || fillId == 0){
+            return;
+        }
         PaperQueExample paperQueExample1 = new PaperQueExample();
         PaperQueExample.Criteria criteria1 = paperQueExample1.createCriteria();
         criteria1.andFillIdEqualTo(fillId);
@@ -211,6 +218,9 @@ public class TeacherPaperServiceImpl implements TeacherPaperService {
     }
 
     private void updateJudgeCompliseFlag(Integer judgeId){
+        if(judgeId == null || judgeId == 0){
+            return;
+        }
         PaperQueExample paperQueExample1 = new PaperQueExample();
         PaperQueExample.Criteria criteria1 = paperQueExample1.createCriteria();
         criteria1.andJudgeIdEqualTo(judgeId);
@@ -225,6 +235,9 @@ public class TeacherPaperServiceImpl implements TeacherPaperService {
     }
 
     private void updateMultipleCompliseFlag(Integer multipleId){
+        if(multipleId == null || multipleId == 0){
+            return;
+        }
         PaperQueExample paperQueExample1 = new PaperQueExample();
         PaperQueExample.Criteria criteria1 = paperQueExample1.createCriteria();
         criteria1.andMultipleIdEqualTo(multipleId);
